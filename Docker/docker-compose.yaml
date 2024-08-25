@@ -1,0 +1,50 @@
+services:
+
+  appname_backend:
+    volumes:
+      - static:/static
+    environment:
+      - DEBUG=1
+      - ALLOWED_HOSTS=localhost
+      - SECRET_KEY=django-insecure-!95&e2$@z4287d*6h$$9@3s2fu0@p_tlio23-ftd+x57&#xu#x
+      - DB_NAME=CTTdb
+      - DB_USERNAME=CTT
+      - DB_PASSWORD=Cr0550v3rt!metr4ck3r
+      - DB_IP=172.20.0.3
+    build:
+      context: ./appnameBackend
+    ports:
+      - "8080:8000"
+
+  appname_frontend:
+    build:
+      context: ./appnameFrontend
+    volumes:
+      - frontend:/usr/src/app/dist
+
+  appname_nginx:
+    build:
+      context: ./nginx
+    volumes:
+      - static:/static
+      - frontend:/var/www/frontend
+    ports:
+      - "8081:443"
+    depends_on:
+      - appname_backend
+      - appname_frontend
+
+  appname_pgdb:
+    image: postgres:16-alpine
+    container_name: appnamepgdb
+    environment:
+      - POSTGRES_DB=CTTdb
+      - POSTGRES_USER=CTT
+      - POSTGRES_PASSWORD=Cr0550v3rt!metr4ck3r
+    volumes:
+      - appname_pgdata:/var/lib/postgresql/prod-data/
+
+volumes:
+  appname_pgdata:
+  static:
+  frontend:
