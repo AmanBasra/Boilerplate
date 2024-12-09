@@ -1,6 +1,17 @@
 echo "Please enter Project Name"
 read projname
 
+# Check for necessary tools
+if ! command -v curl &> /dev/null; then
+    echo "curl is not installed. Install it and re-run the script."
+    exit 1
+fi
+
+if ! command -v npm &> /dev/null; then
+    echo "npm is not installed. Install it and re-run the script."
+    exit 1
+fi
+
 # Create project directories
 mkdir $projname
 cd $projname
@@ -12,15 +23,19 @@ source venv/bin/activate
 
 # Install Django and create Django project
 pip install django
-django-admin startproject ${projname}_backend
+django-admin startproject ${projname}_backend || { echo "Django project creation failed!" >&2; exit 1; }
 
 # Set up frontend with Vite
 sudo apt install npm -y
-npm create vite@latest ${projname}_frontend
+npm create vite@latest ${projname}_frontend || { echo "Vite project creation failed!" >&2; exit 1; }
 cd ${projname}_frontend
 npm install
-npm install @mui/material @mui/icons-material
 
+echo "Do you want to install Material-UI? (y/n)"
+read mui_install
+if [ "$mui_install" == "y" ]; then
+    npm install @mui/material @mui/icons-material
+fi
 cd ..
 
 # Set up Nginx and SSL
@@ -32,19 +47,14 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout key.key -out cert.cr
 # Download necessary files
 curl -o default.conf https://raw.githubusercontent.com/AmanBasra/Boilerplate/main/nginx/default.conf
 curl -o Dockerfile https://raw.githubusercontent.com/AmanBasra/Boilerplate/main/nginx/Dockerfile
+cd ..
 
-# Navigate and clone Dockerfiles
-cd ../${projname}_frontend
+# Clone Dockerfiles
+curl -o docker-compose.yaml https://raw.githubusercontent.com/AmanBasra/Boilerplate/main/Docker/docker-compose.yaml
+sed -i.bak "s/appname/${projname}/g" ./docker-compose.yaml
+
+cd ${projname}_frontend
 curl -o Dockerfile https://raw.githubusercontent.com/AmanBasra/Boilerplate/main/React/Dockerfile
-
 cd ../${projname}_backend
 curl -o Dockerfile https://raw.githubusercontent.com/AmanBasra/Boilerplate/main/Django/Dockerfile
-curl -o entrypoint.sh https://raw.githubusercontent.com/AmanBasra/Boilerplate/main/Django/entrypoint.sh
-
-# Copy SSL files to backend
-cp ../nginx/key.key ./
-cp ../nginx/cert.crt ./
-
-cd ..
-curl -o docker-compose.yaml https://raw.githubusercontent.com/AmanBasra/Boilerplate/main/Docker/docker-compose.yaml
-sed -i "s/appname/${projname}/g" ./docker-compose.yaml
+curl -o entrypoint
